@@ -76,6 +76,87 @@ Beispiele:
 * Zahlungsanbieter
 * E-Mail-Gateways
 
+## Projektstruktur
+
+Ein typisches HexSlice-Projekt bildet die Architektur in der Ordnerstruktur ab:
+ein `hexagon` mit dem Application Core, umgeben von `adapters`.
+
+```text
+src/
+  hexagon/
+    domain/
+      <business-area>/
+        <entity>
+        <value-object>
+        <domain-event>
+        <domain-service>
+
+    application/
+      <business-area>/
+        <use-case>/
+          command | query
+          handler
+          validator
+          result
+          ports/
+            <use-case-specific-port>
+
+        ports/
+          <business-area-shared-port>
+
+      ports/
+        <application-wide-port>
+
+  adapters/
+    inbound/
+      <adapter-type>/
+        <business-area>/
+          <use-case-entrypoint>
+
+    outbound/
+      <adapter-type>/
+        <business-area>/
+          <port-implementation>
+```
+
+Die Abhängigkeitsrichtung zeigt immer nach innen — Adapter hängen vom Core ab,
+der Core niemals von Adaptern oder Infrastruktur:
+
+```mermaid
+flowchart LR
+    subgraph ADIN["adapters/inbound"]
+        UEP["use-case entrypoint<br/>(API · CLI · Messaging)"]
+    end
+
+    subgraph HEX["hexagon — Application Core"]
+        direction TB
+        subgraph APP["application — Vertical Slices"]
+            UC["use-case<br/>command/query · handler<br/>validator · result"]
+            PORTS["ports<br/>use-case / business-area / application-wide"]
+        end
+        subgraph DOM["domain — fachlicher Kern"]
+            ENT["entity · value-object<br/>domain-event · domain-service"]
+        end
+    end
+
+    subgraph ADOUT["adapters/outbound"]
+        IMPL["port implementation<br/>(Persistenz · Payment · E-Mail)"]
+    end
+
+    UEP -->|ruft Use Case auf| UC
+    UC -->|nutzt| ENT
+    UC -->|braucht / bietet| PORTS
+    IMPL -.->|implementiert| PORTS
+```
+
+| Ordner | Verantwortung |
+| --- | --- |
+| `hexagon/domain` | Fachlicher Kern. |
+| `hexagon/application` | Use Cases als Vertical Slices. |
+| `hexagon/application/.../ports` | Verträge, die die Application braucht oder anbietet. |
+| `adapters/inbound` | Ruft Use Cases auf. |
+| `adapters/outbound` | Implementiert Ports. |
+
 ## Abhängigkeitsregeln
 
 Die Abhängigkeitsrichtung zeigt nach innen.

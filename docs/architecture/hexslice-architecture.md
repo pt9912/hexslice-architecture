@@ -76,6 +76,87 @@ Examples:
 * payment providers
 * email gateways
 
+## Project Structure
+
+A typical HexSlice project mirrors the architecture in its folder layout: a
+`hexagon` holding the application core, surrounded by `adapters`.
+
+```text
+src/
+  hexagon/
+    domain/
+      <business-area>/
+        <entity>
+        <value-object>
+        <domain-event>
+        <domain-service>
+
+    application/
+      <business-area>/
+        <use-case>/
+          command | query
+          handler
+          validator
+          result
+          ports/
+            <use-case-specific-port>
+
+        ports/
+          <business-area-shared-port>
+
+      ports/
+        <application-wide-port>
+
+  adapters/
+    inbound/
+      <adapter-type>/
+        <business-area>/
+          <use-case-entrypoint>
+
+    outbound/
+      <adapter-type>/
+        <business-area>/
+          <port-implementation>
+```
+
+The dependency direction always points inward — adapters depend on the core,
+the core never depends on adapters or infrastructure:
+
+```mermaid
+flowchart LR
+    subgraph ADIN["adapters/inbound"]
+        UEP["use-case entrypoint<br/>(API · CLI · messaging)"]
+    end
+
+    subgraph HEX["hexagon — application core"]
+        direction TB
+        subgraph APP["application — vertical slices"]
+            UC["use-case<br/>command/query · handler<br/>validator · result"]
+            PORTS["ports<br/>use-case / business-area / application-wide"]
+        end
+        subgraph DOM["domain — business core"]
+            ENT["entity · value-object<br/>domain-event · domain-service"]
+        end
+    end
+
+    subgraph ADOUT["adapters/outbound"]
+        IMPL["port implementation<br/>(persistence · payment · email)"]
+    end
+
+    UEP -->|calls use case| UC
+    UC -->|uses| ENT
+    UC -->|needs / offers| PORTS
+    IMPL -.->|implements| PORTS
+```
+
+| Folder | Responsibility |
+| --- | --- |
+| `hexagon/domain` | The business core. |
+| `hexagon/application` | Use cases as vertical slices. |
+| `hexagon/application/.../ports` | Contracts the application needs or offers. |
+| `adapters/inbound` | Calls use cases. |
+| `adapters/outbound` | Implements ports. |
+
 ## Dependency Rules
 
 The dependency direction points inward.

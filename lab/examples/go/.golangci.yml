@@ -1,0 +1,16 @@
+# golangci-lint v2 configuration (pinned to v2.12.2 in the Makefile).
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

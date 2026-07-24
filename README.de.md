@@ -3,8 +3,9 @@
 [English](README.md) | **Deutsch**
 
 Dieses Repository beschreibt und dokumentiert die **HexSlice Architecture** als
-Architekturkonzept. Es enthält keinen Quellcode und ist unabhängig von
-Programmiersprache und Framework.
+Architekturkonzept, unabhängig von Programmiersprache und Framework. Das Konzept
+selbst ist sprachunabhängig; lauffähige, sprachspezifische Beispielprojekte
+liegen unter [`lab/`](lab/).
 
 ## Architektur
 
@@ -33,3 +34,10 @@ Kurz gesagt:
 Die Architektur ist hier dokumentiert:
 
 [HexSlice Architecture](docs/architecture/hexslice-architecture.de.md)
+
+## Beispiele
+
+Lauffähige, sprachspezifische Beispiele liegen unter [`lab/`](lab/README.md):
+
+* [Go](lab/examples/go/) — Business-Area `order` mit den Slices *create order*
+  und *cancel order*, einem CLI-Inbound-Adapter sowie `make`- und Docker-Tooling.

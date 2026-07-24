@@ -3,8 +3,9 @@
 **English** | [Deutsch](README.de.md)
 
 This repository describes and documents the **HexSlice Architecture** as an
-architectural concept. It contains no source code and is independent of any
-programming language or framework.
+architectural concept, independent of any programming language or framework. The
+concept itself is language-agnostic; runnable, language-specific example
+projects live under [`lab/`](lab/).
 
 ## Architecture
 
@@ -33,3 +34,10 @@ In short:
 The architecture is documented here:
 
 [HexSlice Architecture](docs/architecture/hexslice-architecture.md)
+
+## Examples
+
+Runnable, language-specific examples live under [`lab/`](lab/README.md):
+
+* [Go](lab/examples/go/) — `order` business area with *create order* and
+  *cancel order* slices, a CLI inbound adapter, and `make` + Docker tooling.

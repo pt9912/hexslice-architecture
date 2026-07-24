@@ -1,0 +1,52 @@
+# a-check configuration — hexagonal architecture gate for the Go example.
+# https://github.com/pt9912/a-check
+#
+# Strictly decoded: unknown keys cause exit code 2.
+version: 1
+
+languages:
+  go: ["**/*.go"]
+
+# Each layer maps to a role whose purity rules a-check enforces:
+#   domain  -> imports only itself
+#   app     -> domain + ports, no adapters/tech
+#   port    -> domain only
+#   adapter -> tech binding, no cross-adapter imports
+#
+# Note: application slice files live directly in the slice directory, while the
+# slice-local and business-area ports live in `.../ports/**`. The app globs use
+# a single-level `*.go` so they do not swallow the nested `ports/` directories.
+layers:
+  domain:
+    globs: ["internal/hexagon/domain/**"]
+    role: domain
+  app:
+    globs:
+      - "internal/hexagon/application/order/createorder/*.go"
+      - "internal/hexagon/application/order/cancelorder/*.go"
+    role: app
+  ports:
+    globs: ["internal/hexagon/application/**/ports/**"]
+    role: port
+  adapters:
+    globs: ["internal/adapters/**"]
+    role: adapter
+
+# Allowed directed dependencies (inward only). Any cross-layer import without a
+# matching edge is reported as `wrong-direction`.
+edges:
+  - {from: app,      to: domain}
+  - {from: app,      to: ports}
+  - {from: ports,    to: domain}
+  - {from: adapters, to: app}      # inbound CLI adapter drives the use cases
+  - {from: adapters, to: domain}   # adapters map to/from domain objects
+# Note: outbound adapters *implement* the ports, but via Go interface
+# satisfaction (structural, no import), so there is no adapters->ports import
+# edge to declare — the wiring happens in the composition root (cmd/**).
+
+# The composition root wires adapters to slices and is exempt from layer rules.
+composition_root: ["cmd/**"]
+
+# Tests are not part of the production dependency graph.
+exclude:
+  - "**/*_test.go"

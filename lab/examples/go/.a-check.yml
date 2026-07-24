@@ -1,33 +1,35 @@
-# a-check configuration — hexagonal architecture gate for the Go example.
-# https://github.com/pt9912/a-check
+# a-check configuration — hexagonal + vertical-slice (HexSlice) architecture gate.
+# https://github.com/pt9912/a-check   (requires a-check >= v0.15.0)
 #
 # Strictly decoded: unknown keys cause exit code 2.
+#
+# The per-slice app globs (.../createorder/**) and per-port-folder globs
+# (.../ports/**) use clean literal directory prefixes on purpose. That prefix is
+# what makes the two vertical-slice rules active:
+#   - lateral-slice: one slice must not import another slice of the same app layer
+#   - port-locality: a use-case-local port must only be used within its own slice
+# A wildcard-in-the-middle (.../**/ports/**) or file-extension (.../*.go) glob
+# carries no such prefix and would leave both rules silently inert.
 version: 1
 
 languages:
   go: ["**/*.go"]
 
-# Each layer maps to a role whose purity rules a-check enforces:
-#   domain  -> imports only itself
-#   app     -> domain + ports, no adapters/tech
-#   port    -> domain only
-#   adapter -> tech binding, no cross-adapter imports
-#
-# Note: application slice files live directly in the slice directory, while the
-# slice-local and business-area ports live in `.../ports/**`. The app globs use
-# a single-level `*.go` so they do not swallow the nested `ports/` directories.
 layers:
   domain:
     globs: ["internal/hexagon/domain/**"]
     role: domain
+  ports:
+    globs:
+      - "internal/hexagon/application/order/createorder/ports/**"   # use-case-local
+      - "internal/hexagon/application/order/cancelorder/ports/**"   # use-case-local
+      - "internal/hexagon/application/order/ports/**"               # business-area-shared
+    role: port
   app:
     globs:
-      - "internal/hexagon/application/order/createorder/*.go"
-      - "internal/hexagon/application/order/cancelorder/*.go"
+      - "internal/hexagon/application/order/createorder/**"          # slice: create order
+      - "internal/hexagon/application/order/cancelorder/**"          # slice: cancel order
     role: app
-  ports:
-    globs: ["internal/hexagon/application/**/ports/**"]
-    role: port
   adapters:
     globs: ["internal/adapters/**"]
     role: adapter

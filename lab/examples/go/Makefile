@@ -16,7 +16,8 @@ BUILD_ARGS   := --build-arg GO_VERSION=$(GO_VERSION) --build-arg GOLANGCI_VERSIO
 # Digest-pin the architecture gate here (overrides the fallback baked into
 # a-check.mk). Bump this per release; override locally with
 #   make a-check A_CHECK_IMAGE=a-check:dev
-A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:24939a6b47bfbfcb9845813cd781a70fba161fb12c6593e188ac51ede5267a9c
+# Pinned to a-check v0.15.0 (adds the HexSlice rules lateral-slice & port-locality).
+A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:6425c93a9a4359ef28c4da231a2d1db6f421fdaa8f96877ac89d201827c42d09
 
 include a-check.mk
 

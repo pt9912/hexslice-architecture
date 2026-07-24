@@ -37,10 +37,19 @@ Run `make help` to list all targets. Individual checks are also available:
 
 ## Architecture gate (a-check)
 
-The example is validated by [a-check](https://github.com/pt9912/a-check), a
-containerized gate that verifies the hexagonal layering. The layer/edge mapping
-lives in [`.a-check.yml`](.a-check.yml); the make targets come from the generated
-[`a-check.mk`](a-check.mk), and the image digest is pinned in the `Makefile`.
+The example is validated by [a-check](https://github.com/pt9912/a-check)
+(**v0.15.0+**), a containerized gate that verifies the hexagonal layering. The
+layer/edge mapping lives in [`.a-check.yml`](.a-check.yml); the make targets come
+from the generated [`a-check.mk`](a-check.mk), and the image digest is pinned in
+the `Makefile`.
+
+Because the config uses clean per-slice / per-port directory globs, a-check also
+enforces the two **vertical-slice** rules on top of the classic hexagonal ones:
+
+- `lateral-slice` — one use-case slice may not import another slice of the same
+  application layer (cross-slice contracts must go through a shared port).
+- `port-locality` — a use-case-local port may only be used inside its own slice;
+  shared contracts must be promoted to the business-area (`order/ports`) level.
 
 `make a-check` returns exit code `0` (no violations) for this example. Unlike the
 Go toolchain targets — which bake the source in via `COPY` and use no mounts —

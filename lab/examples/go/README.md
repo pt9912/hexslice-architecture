@@ -38,38 +38,39 @@ Run `make help` to list all targets. Individual checks are also available:
 ## Architecture gate (a-check)
 
 The example is validated by [a-check](https://github.com/pt9912/a-check)
-(**v0.19.0**), a containerized gate that verifies the hexagonal layering. The
+(**v0.20.0**), a containerized gate that verifies the hexagonal layering. The
 layer/edge mapping lives in [`.a-check.yml`](.a-check.yml); the make targets come
 from the generated [`a-check.mk`](a-check.mk), and the image digest is pinned in
 the `Makefile`.
 
-Because the config uses clean per-slice / per-port directory globs, a-check also
-enforces the two **vertical-slice** rules on top of the classic hexagonal ones:
+Because the config uses clean per-slice / per-port directory globs, a-check
+enforces the two **vertical-slice** rules on top of the classic hexagonal ones —
+and the direction dimension pairs the adapters with the ports:
 
 - `lateral-slice` — one use-case slice may not import another slice of the same
   application layer (cross-slice contracts must go through a shared port).
 - `port-locality` — a use-case-local port may only be used inside its own slice;
   shared contracts must be promoted to the business-area (`order/ports`) level.
+- `port-direction-mismatch` — an adapter may only speak ports of its own
+  direction (`driving` ↔ `inbound`, `driven` ↔ `outbound`).
 
-`make a-check` returns exit code `0` (no violations) for this example. Both
-slice rules are demonstrably **active** here: injecting a cross-slice import and
-an import of a foreign slice-local port into a copy of the tree makes a-check
-report `lateral-slice` and `port-locality` and exit `1`.
+`make a-check` returns exit code `0` (no violations) for this example, and all
+three rules are demonstrably **active**: injecting a cross-slice import, an
+import of a foreign slice-local port, and an inbound-port import into the
+*driven* id adapter into a copy of the tree makes a-check report `lateral-slice`,
+`port-locality` and `port-direction-mismatch` and exit `1`. The direction finding
+survives a declared `allow` edge — that is what "categorical" means for this rule.
 
-Two boundaries of the gate are worth stating, because both are silent when they
-bite:
-
-- The port globs end at the `ports` segment, **not** at the direction folder
-  below it. `port-locality` derives a port's scope by stripping the last segment
-  of the longest matching glob prefix, so a glob on `.../ports/outbound/**`
-  would scope the port to `.../ports` instead of `.../createorder` and the rule
-  would go inert — measured: a genuine cross-slice import then reports nothing.
-  A port layer therefore cannot carry a `direction` while its slice holds both
-  inbound and outbound ports.
-- `port-direction-mismatch` pairs `driving` with `inbound` and `driven` with
-  `outbound`, and needs both sides declared. Only the adapter layers declare a
-  direction here; the rule is opt-in and stays inert until the port side can
-  carry one, exactly as the dimension specifies.
+One release boundary is worth stating, because it is silent when it bites. A port
+layer declares its direction, so its glob ends on that same segment
+(`.../ports/outbound/**`). Until a-check **v0.20.0** that shape switched
+`port-locality` off without a finding: `portScope` stripped the last segment of
+the glob prefix, the port scoped to `.../ports` instead of `.../createorder`, and
+a genuine cross-slice import reported nothing.
+[ADR-0040](https://github.com/pt9912/a-check/blob/main/docs/plan/adr/0040-portscope-richtungssegment.md)
+has `portScope` strip the declared direction segment as well, and the same
+release adds an advisory for a port glob whose derived scope no longer reaches
+the app tree. The pin tracks that release for exactly this reason.
 
 Unlike the Go toolchain targets — which bake the source in via `COPY` and use no
 mounts — a-check reads the tree through a **read-only** bind mount (`:ro`) and

@@ -16,9 +16,10 @@ BUILD_ARGS   := --build-arg GO_VERSION=$(GO_VERSION) --build-arg GOLANGCI_VERSIO
 # Digest-pin the architecture gate here (overrides the placeholder in the
 # generated a-check.mk fragment). Bump this per release; override locally with
 #   make a-check A_CHECK_IMAGE=a-check:dev
-# Pinned to a-check v0.19.0 — carries the direction vocabulary per role
-# (adapters driving|driven, ports inbound|outbound) that the folder names follow.
-A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:34d3dfb50e44d99ea735186a35e1040589c4681dcfa2a51ed0f2aaea718cdd2d
+# Pinned to a-check v0.20.0 — ADR-0040 lets portScope strip the direction
+# segment, so a port layer's glob can end on the direction it declares without
+# switching port-locality off. Before that release, that shape was silently inert.
+A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:e8208764b119c606c92f82722813386277a65b12812d23b6107ea7a14dc25da1
 
 include a-check.mk
 

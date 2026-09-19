@@ -1,25 +1,26 @@
 # a-check configuration — hexagonal + vertical-slice (HexSlice) architecture gate.
-# https://github.com/pt9912/a-check   (pinned to v0.19.0 — see the Makefile)
+# https://github.com/pt9912/a-check   (pinned to v0.20.0 — see the Makefile)
 #
 # Strictly decoded: unknown keys cause exit code 2.
 #
 # The per-slice app globs (.../createorder/**) and per-port-folder globs
-# (.../ports/**) use clean literal directory prefixes on purpose. That prefix is
-# what makes the two vertical-slice rules active:
+# (.../ports/<direction>/**) use clean literal directory prefixes on purpose.
+# That prefix is what makes the two vertical-slice rules active:
 #   - lateral-slice: one slice must not import another slice of the same app layer
 #   - port-locality: a use-case-local port must only be used within its own slice
 # A wildcard-in-the-middle (.../**/ports/**) or file-extension (.../*.go) glob
 # carries no such prefix and would leave both rules silently inert.
 #
-# The port globs deliberately end at the "ports" segment, NOT at the direction
-# folder below it (ports/inbound/**, ports/outbound/**). port-locality derives a
-# port's scope by stripping the LAST segment of the longest matching glob prefix:
-# ".../createorder/ports/outbound/**" would scope the port to
-# ".../createorder/ports" instead of ".../createorder", and the rule would go
-# silently inert — measured against a genuine cross-slice import, which then
-# reports nothing. One consequence follows for this example: a port layer cannot
-# carry a `direction` while its slice holds both inbound and outbound ports, so
-# only the adapter layers declare theirs (see below).
+# A port layer's glob ends on the direction segment that the same layer declares.
+# Before a-check v0.20.0 that combination switched port-locality off silently:
+# portScope stripped the last segment of the glob prefix, so
+# ".../createorder/ports/outbound/**" scoped the port to ".../createorder/ports"
+# instead of ".../createorder" and the rule reported nothing at all — measured
+# against a genuine cross-slice import. ADR-0040 has portScope strip the declared
+# direction segment too, which is what makes the direction-bearing port glob
+# viable; this example tracked that release for exactly this reason. Keep every
+# port glob ending on its direction segment: the layer declares it, and a-check's
+# advisory flags a port glob whose derived scope no longer reaches the app tree.
 version: 1
 
 languages:
@@ -29,12 +30,19 @@ layers:
   domain:
     globs: ["internal/hexagon/domain/**"]
     role: domain
-  ports:
+  ports_inbound:
     globs:
-      - "internal/hexagon/application/order/createorder/ports/**"   # use-case-local
-      - "internal/hexagon/application/order/cancelorder/ports/**"   # use-case-local
-      - "internal/hexagon/application/order/ports/**"               # business-area-shared
+      - "internal/hexagon/application/order/createorder/ports/inbound/**"    # use-case-local
+      - "internal/hexagon/application/order/cancelorder/ports/inbound/**"    # use-case-local
     role: port
+    direction: inbound      # offered by the core; a driving adapter calls it
+  ports_outbound:
+    globs:
+      - "internal/hexagon/application/order/createorder/ports/outbound/**"   # use-case-local
+      - "internal/hexagon/application/order/cancelorder/ports/outbound/**"   # use-case-local
+      - "internal/hexagon/application/order/ports/outbound/**"               # business-area-shared
+    role: port
+    direction: outbound     # needed by the core; a driven adapter implements it
   app:
     globs:
       - "internal/hexagon/application/order/createorder/**"          # slice: create order
@@ -53,26 +61,27 @@ layers:
 # matching edge is reported as `wrong-direction`.
 edges:
   - {from: app,              to: domain}
-  - {from: app,              to: ports}
-  - {from: ports,            to: domain}
-  - {from: driving_adapters, to: ports}    # the CLI speaks the slices' inbound ports
-  - {from: driven_adapters,  to: domain}   # adapters map to/from domain objects
-# Note: driven adapters *implement* the outbound ports, but via Go interface
-# satisfaction (structural, no import), so they need no edge to `ports` — the
-# wiring happens in the composition root (cmd/**). The driving adapter is the
-# opposite case: it imports the inbound port, because the port owns the
-# request/result types it builds and reads.
-# `driving_adapters -> app` is deliberately not declared: this example's driving
-# adapter reaches the use cases exclusively through their inbound ports. Add the
-# edge in the same commit as an adapter that imports a slice directly.
+  - {from: app,              to: ports_inbound}    # the slice imports its own inbound port
+  - {from: app,              to: ports_outbound}   # the slice imports its own outbound ports
+  - {from: ports_outbound,   to: domain}
+  - {from: driving_adapters, to: ports_inbound}    # the CLI speaks the inbound ports
+  - {from: driven_adapters,  to: domain}           # adapters map to/from domain objects
+# Notes on what is deliberately absent:
+# * driven adapters *implement* the outbound ports, but via Go interface
+#   satisfaction (structural, no import), so they need no edge to ports_outbound;
+#   the wiring happens in the composition root (cmd/**). The driving adapter is
+#   the opposite case: it imports the inbound port, because the port owns the
+#   request/result types it builds and reads.
+# * `ports_inbound -> domain` is absent because no inbound port imports the
+#   domain — the contract is expressed in plain types and keeps both sides out.
+# * `driving_adapters -> app` is absent because the driving adapter reaches the
+#   use cases exclusively through their inbound ports. Add the edge in the same
+#   commit as a driving adapter that imports a slice directly.
 #
-# `port-direction-mismatch` pairs `driving` with `inbound` and `driven` with
-# `outbound`, and needs BOTH sides declared. The port side cannot declare a
-# direction here (see the glob note above), so the rule stays inert for this
-# example — opt-in, exactly as specified. The adapter directions below are the
-# half that is expressible; they become enforceable the moment a port layer can
-# carry its direction (single-direction slice, or a-check scoping the direction
-# segment away).
+# `port-direction-mismatch` is live here: a driving adapter importing an inbound
+# port is the pair (`driving` ↔ `inbound`), and a driven adapter importing an
+# inbound port is a finding — verified by injection, so the direction dimension
+# is not a declaration into the void.
 
 # The composition root wires adapters to slices and is exempt from layer rules.
 composition_root: ["cmd/**"]

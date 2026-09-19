@@ -5,11 +5,12 @@ import (
 	"testing"
 
 	"hexslice/example/internal/hexagon/application/order/createorder"
+	"hexslice/example/internal/hexagon/application/order/createorder/ports/inbound"
 	"hexslice/example/internal/hexagon/domain/order"
 )
 
-// fakeRepo is a hand-written stub for the OrderRepository port. It shows that
-// the use case is testable without any real infrastructure.
+// fakeRepo is a hand-written stub for the outbound OrderRepository port. It
+// shows that the use case is testable without any real infrastructure.
 type fakeRepo struct {
 	saved *order.Order
 }
@@ -26,7 +27,7 @@ func (f *fakeRepo) FindByID(_ context.Context, id order.ID) (*order.Order, error
 	return nil, order.ErrNotFound
 }
 
-// fakeIDs is a deterministic stub for the IDGenerator port.
+// fakeIDs is a deterministic stub for the outbound IDGenerator port.
 type fakeIDs struct{}
 
 func (fakeIDs) NewOrderID() order.ID { return "ORD-TEST" }
@@ -35,9 +36,9 @@ func TestCreateOrderSucceeds(t *testing.T) {
 	repo := &fakeRepo{}
 	handler := createorder.NewHandler(repo, fakeIDs{})
 
-	res, err := handler.Handle(context.Background(), createorder.Command{
+	res, err := handler.Create(context.Background(), inbound.Request{
 		CustomerID: "cust-1",
-		Lines: []createorder.LineInput{
+		Lines: []inbound.Line{
 			{SKU: "A", Quantity: 2, UnitAmount: 500, Currency: "EUR"},
 		},
 	})
@@ -60,7 +61,7 @@ func TestCreateOrderSucceeds(t *testing.T) {
 
 func TestCreateOrderValidationFails(t *testing.T) {
 	handler := createorder.NewHandler(&fakeRepo{}, fakeIDs{})
-	if _, err := handler.Handle(context.Background(), createorder.Command{}); err == nil {
-		t.Fatal("expected a validation error for an empty command")
+	if _, err := handler.Create(context.Background(), inbound.Request{}); err == nil {
+		t.Fatal("expected a validation error for an empty request")
 	}
 }

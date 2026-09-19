@@ -42,7 +42,7 @@ func New(id ID, customerID CustomerID, lines []Line) (*Order, error) {
 }
 
 // Restore rebuilds an order from persisted state without re-running creation
-// invariants. Outbound adapters use it when loading stored orders.
+// invariants. Driven adapters use it when loading stored orders.
 func Restore(id ID, customerID CustomerID, lines []Line, status Status) *Order {
 	return &Order{
 		id:         id,

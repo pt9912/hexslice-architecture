@@ -1,8 +1,9 @@
-// Package ports holds contracts that only the cancel-order slice needs.
+// Package outbound holds the contracts the cancel-order slice needs from the
+// outside world.
 //
 // Notifier is a use-case-local port: announcing a cancellation is a need
 // specific to this slice, so the port lives inside it.
-package ports
+package outbound
 
 import (
 	"context"

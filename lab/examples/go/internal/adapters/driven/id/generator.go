@@ -1,5 +1,5 @@
-// Package id is an outbound adapter implementing the create-order IDGenerator
-// port with sequential identifiers of the form ORD-000001.
+// Package id is a driven adapter implementing the create-order outbound
+// IDGenerator port with sequential identifiers of the form ORD-000001.
 package id
 
 import (

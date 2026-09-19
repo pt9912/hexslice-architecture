@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"hexslice/example/internal/hexagon/application/order/cancelorder"
+	"hexslice/example/internal/hexagon/application/order/cancelorder/ports/inbound"
 	"hexslice/example/internal/hexagon/domain/order"
 )
 
@@ -56,7 +57,7 @@ func TestCancelOrderSucceeds(t *testing.T) {
 	notifier := &recordingNotifier{}
 	handler := cancelorder.NewHandler(repo, notifier)
 
-	res, err := handler.Handle(context.Background(), cancelorder.Command{OrderID: "ORD-1", Reason: "test"})
+	res, err := handler.Cancel(context.Background(), inbound.Request{OrderID: "ORD-1", Reason: "test"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestCancelOrderSucceeds(t *testing.T) {
 
 func TestCancelOrderNotFound(t *testing.T) {
 	handler := cancelorder.NewHandler(&fakeRepo{}, &recordingNotifier{})
-	_, err := handler.Handle(context.Background(), cancelorder.Command{OrderID: "missing"})
+	_, err := handler.Cancel(context.Background(), inbound.Request{OrderID: "missing"})
 	if !errors.Is(err, order.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}

@@ -1,6 +1,6 @@
-// Package order is an outbound adapter providing an in-memory implementation of
-// the order-area OrderRepository port. It depends on the application core; the
-// core never depends on it.
+// Package order is a driven adapter providing an in-memory implementation of
+// the order-area outbound OrderRepository port. It depends on the application
+// core; the core never depends on it.
 package order
 
 import (

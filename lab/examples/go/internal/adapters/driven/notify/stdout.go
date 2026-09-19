@@ -1,5 +1,5 @@
-// Package notify is an outbound adapter implementing the cancel-order Notifier
-// port by writing human-readable messages to an io.Writer.
+// Package notify is a driven adapter implementing the cancel-order outbound
+// Notifier port by writing human-readable messages to an io.Writer.
 package notify
 
 import (

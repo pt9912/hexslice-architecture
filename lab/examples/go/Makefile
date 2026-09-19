@@ -13,11 +13,12 @@ BUILD_ARGS   := --build-arg GO_VERSION=$(GO_VERSION) --build-arg GOLANGCI_VERSIO
 
 .DEFAULT_GOAL := help
 
-# Digest-pin the architecture gate here (overrides the fallback baked into
-# a-check.mk). Bump this per release; override locally with
+# Digest-pin the architecture gate here (overrides the placeholder in the
+# generated a-check.mk fragment). Bump this per release; override locally with
 #   make a-check A_CHECK_IMAGE=a-check:dev
-# Pinned to a-check v0.15.0 (adds the HexSlice rules lateral-slice & port-locality).
-A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:6425c93a9a4359ef28c4da231a2d1db6f421fdaa8f96877ac89d201827c42d09
+# Pinned to a-check v0.19.0 — carries the direction vocabulary per role
+# (adapters driving|driven, ports inbound|outbound) that the folder names follow.
+A_CHECK_IMAGE ?= ghcr.io/pt9912/a-check@sha256:34d3dfb50e44d99ea735186a35e1040589c4681dcfa2a51ed0f2aaea718cdd2d
 
 include a-check.mk
 

@@ -25,8 +25,9 @@ Kurz gesagt:
 * Use Cases werden als Vertical Slices organisiert.
 * Ports werden vom Application Core definiert.
 * Ports leben so lokal wie möglich und so gemeinsam wie nötig.
-* Inbound Adapter rufen Use Cases auf.
-* Outbound Adapter implementieren Ports.
+* Ports tragen eine Richtung: Inbound Ports bietet der Core an, Outbound Ports benötigt er.
+* Driving Adapter rufen Use Cases über deren Inbound Ports auf.
+* Driven Adapter implementieren Outbound Ports.
 * Der Core hängt nicht von technischer Infrastruktur ab.
 
 ## Dokumentation
@@ -40,4 +41,4 @@ Die Architektur ist hier dokumentiert:
 Lauffähige, sprachspezifische Beispiele liegen unter [`lab/`](lab/README.md):
 
 * [Go](lab/examples/go/) — Business-Area `order` mit den Slices *create order*
-  und *cancel order*, einem CLI-Inbound-Adapter sowie `make`- und Docker-Tooling.
+  und *cancel order*, einem CLI-Driving-Adapter sowie `make`- und Docker-Tooling.

@@ -1,6 +1,6 @@
 // Command orderctl is the composition root of the Go HexSlice example. It wires
-// outbound adapters to the application slices and drives them from an inbound
-// CLI adapter. This is the only place where core and infrastructure meet.
+// driven adapters to the application slices and drives them from a driving CLI
+// adapter. This is the only place where core and infrastructure meet.
 package main
 
 import (
@@ -8,27 +8,29 @@ import (
 	"fmt"
 	"os"
 
-	idgen "hexslice/example/internal/adapters/outbound/id"
-	memorder "hexslice/example/internal/adapters/outbound/memory/order"
-	"hexslice/example/internal/adapters/outbound/notify"
+	idgen "hexslice/example/internal/adapters/driven/id"
+	memorder "hexslice/example/internal/adapters/driven/memory/order"
+	"hexslice/example/internal/adapters/driven/notify"
 
-	cliorder "hexslice/example/internal/adapters/inbound/cli/order"
+	cliorder "hexslice/example/internal/adapters/driving/cli/order"
 
 	"hexslice/example/internal/hexagon/application/order/cancelorder"
 	"hexslice/example/internal/hexagon/application/order/createorder"
 )
 
 func main() {
-	// Outbound adapters implement the ports owned by the application core.
+	// Driven adapters implement the outbound ports owned by the application core.
 	orders := memorder.NewRepository()
 	ids := idgen.NewGenerator()
 	notifier := notify.NewWriter(os.Stdout)
 
-	// Application slices depend only on ports.
+	// Application slices depend only on ports and implement their inbound port.
 	createHandler := createorder.NewHandler(orders, ids)
 	cancelHandler := cancelorder.NewHandler(orders, notifier)
 
-	// Inbound adapter drives the use cases.
+	// The driving adapter drives the use cases through their inbound ports. That
+	// the handlers satisfy those ports is checked here, at the only place that
+	// knows both sides.
 	app := cliorder.NewCLI(createHandler, cancelHandler, os.Stdout, os.Stderr)
 
 	if err := app.Run(context.Background(), os.Args[1:]); err != nil {

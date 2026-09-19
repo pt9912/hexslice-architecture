@@ -1,6 +1,7 @@
-// Package order is the inbound CLI adapter for the order business area. It
-// translates command-line input into application use-case commands and prints
-// the results. It depends on the application core, never the other way around.
+// Package order is the driving CLI adapter for the order business area. It
+// translates command-line input into the slices' inbound-port requests and
+// prints the results. It depends on the inbound ports only — never on the
+// slices themselves, and never the other way around.
 package order
 
 import (
@@ -11,21 +12,25 @@ import (
 	"strconv"
 	"strings"
 
-	"hexslice/example/internal/hexagon/application/order/cancelorder"
-	"hexslice/example/internal/hexagon/application/order/createorder"
+	cancelin "hexslice/example/internal/hexagon/application/order/cancelorder/ports/inbound"
+	createin "hexslice/example/internal/hexagon/application/order/createorder/ports/inbound"
 )
 
 // CLI drives the create-order and cancel-order use cases from the command line.
+// Both are held as inbound ports, so the adapter knows the contract but not the
+// implementation behind it.
 type CLI struct {
-	create *createorder.Handler
-	cancel *cancelorder.Handler
+	create createin.CreateOrder
+	cancel cancelin.CancelOrder
 	out    io.Writer // results (stdout)
 	errOut io.Writer // diagnostics and flag/usage errors (stderr)
 }
 
-// NewCLI wires the inbound adapter to the use-case handlers. Results go to out
-// (stdout); flag parsing and usage errors go to errOut (stderr).
-func NewCLI(create *createorder.Handler, cancel *cancelorder.Handler, out, errOut io.Writer) *CLI {
+// NewCLI wires the driving adapter to the inbound ports of the two use cases.
+// Results go to out (stdout); flag parsing and usage errors go to errOut
+// (stderr). The composition root passes the slices' handlers here; they satisfy
+// the ports structurally.
+func NewCLI(create createin.CreateOrder, cancel cancelin.CancelOrder, out, errOut io.Writer) *CLI {
 	return &CLI{create: create, cancel: cancel, out: out, errOut: errOut}
 }
 
@@ -58,7 +63,7 @@ func (c *CLI) Run(ctx context.Context, args []string) error {
 }
 
 // lineFlag collects repeated -line flags of the form sku:qty:amount:currency.
-type lineFlag []createorder.LineInput
+type lineFlag []createin.Line
 
 func (l *lineFlag) String() string { return "" }
 
@@ -75,7 +80,7 @@ func (l *lineFlag) Set(v string) error {
 	if err != nil {
 		return fmt.Errorf("invalid amount %q: %w", parts[2], err)
 	}
-	*l = append(*l, createorder.LineInput{
+	*l = append(*l, createin.Line{
 		SKU:        parts[0],
 		Quantity:   qty,
 		UnitAmount: amount,
@@ -94,7 +99,7 @@ func (c *CLI) runCreate(ctx context.Context, args []string) error {
 		return err
 	}
 
-	res, err := c.create.Handle(ctx, createorder.Command{
+	res, err := c.create.Create(ctx, createin.Request{
 		CustomerID: *customer,
 		Lines:      lines,
 	})
@@ -114,7 +119,7 @@ func (c *CLI) runCancel(ctx context.Context, args []string) error {
 		return err
 	}
 
-	res, err := c.cancel.Handle(ctx, cancelorder.Command{
+	res, err := c.cancel.Cancel(ctx, cancelin.Request{
 		OrderID: *id,
 		Reason:  *reason,
 	})
@@ -131,9 +136,9 @@ func (c *CLI) runCancel(ctx context.Context, args []string) error {
 func (c *CLI) runDemo(ctx context.Context) error {
 	c.println("== HexSlice order demo ==")
 
-	created, err := c.create.Handle(ctx, createorder.Command{
+	created, err := c.create.Create(ctx, createin.Request{
 		CustomerID: "cust-42",
-		Lines: []createorder.LineInput{
+		Lines: []createin.Line{
 			{SKU: "BOOK-1", Quantity: 2, UnitAmount: 1999, Currency: "EUR"},
 			{SKU: "PEN-7", Quantity: 5, UnitAmount: 150, Currency: "EUR"},
 		},
@@ -143,7 +148,7 @@ func (c *CLI) runDemo(ctx context.Context) error {
 	}
 	c.printf("created order %s | total %s | status %s\n", created.OrderID, created.Total, created.Status)
 
-	cancelled, err := c.cancel.Handle(ctx, cancelorder.Command{
+	cancelled, err := c.cancel.Cancel(ctx, cancelin.Request{
 		OrderID: created.OrderID,
 		Reason:  "customer changed their mind",
 	})
@@ -154,7 +159,7 @@ func (c *CLI) runDemo(ctx context.Context) error {
 
 	// Business rule: cancelling an already cancelled order is rejected by the
 	// domain, not by the adapter.
-	if _, err := c.cancel.Handle(ctx, cancelorder.Command{OrderID: created.OrderID, Reason: "again"}); err != nil {
+	if _, err := c.cancel.Cancel(ctx, cancelin.Request{OrderID: created.OrderID, Reason: "again"}); err != nil {
 		c.printf("second cancel rejected by domain: %v\n", err)
 	}
 	return nil

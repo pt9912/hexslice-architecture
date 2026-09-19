@@ -23,9 +23,12 @@ include a-check.mk
 
 .PHONY: help dev-image image build run test vet fmt lint tidy check clean
 
+# `grep -h` is load-bearing: $(MAKEFILE_LIST) holds more than one file once
+# a-check.mk is included, and without -h every hit would carry a filename prefix
+# that lands in the target column instead of the target name.
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
-		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
 dev-image: ## Build the dev image (toolchain + source + linter)
 	docker build --target dev $(BUILD_ARGS) -t $(DEV_IMAGE) .

@@ -14,8 +14,8 @@ CLI acts as the inbound adapter.
 
 * **Docker** only — no local Go toolchain is needed.
 
-Every target runs inside Docker. The Go toolchain (pinned to **1.26.5**) and
-`golangci-lint` (pinned to **v2.12.2**) live in the images; the source is baked
+Every target runs inside Docker. The Go toolchain (pinned to **1.27.1**) and
+`golangci-lint` (pinned to **v2.13.2**) live in the images; the source is baked
 in via `COPY` — nothing is bind-mounted. Build artifacts are streamed out of the
 container over stdout by the `export` stage's entrypoint (see `make build`).
 

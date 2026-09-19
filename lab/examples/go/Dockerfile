@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.26.5
-ARG GOLANGCI_VERSION=v2.12.2
+ARG GO_VERSION=1.27.1
+ARG GOLANGCI_VERSION=v2.13.2
 
 # ---- base: toolchain + module cache ---------------------------------------
 FROM golang:${GO_VERSION}-alpine AS base

@@ -1,7 +1,7 @@
 BINARY      := orderctl
 IMAGE       := hexslice-order-example
-GO_VERSION  := 1.26.5
-GOLANGCI    := v2.12.2
+GO_VERSION  := 1.27.1
+GOLANGCI    := v2.13.2
 
 DEV_IMAGE    := $(IMAGE):dev
 EXPORT_IMAGE := $(IMAGE):export

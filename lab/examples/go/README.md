@@ -23,6 +23,7 @@ container over stdout by the `export` stage's entrypoint (see `make build`).
 
 ```bash
 make run        # build the runtime image and run the create -> cancel demo
+make smoke      # run the demo in the runtime image and diff it against the expected lines
 make check      # fmt + vet + lint + test, all in Docker
 make build      # compile and extract a static binary to ./bin/orderctl
 make image      # build the minimal (scratch) runtime image
@@ -98,6 +99,29 @@ docker run --rm hexslice-order-example cancel -id ORD-000001 -reason "changed mi
 > The repository is in-memory, so state does not survive across separate process
 > invocations. Use the `demo` subcommand to see a full create → cancel lifecycle
 > in one run.
+
+## Tests
+
+`make test` runs four suites inside the container: the domain rules, both slice
+handlers (with hand-written port stubs), and one **end-to-end** test in
+`cmd/orderctl` that drives the composition root's own wiring — the real adapters,
+the real slices, the real CLI — through the `demo` scenario, a `create` over the
+flag surface, a domain-error path and a malformed flag. Only the process boundary
+(`main`'s exit code) is out of scope.
+
+The end-to-end test lives in `cmd/orderctl`, and that is forced rather than chosen:
+a test in the CLI adapter package would have to import a driven adapter, which is a
+lateral adapter edge the architecture forbids. The composition root is the only
+place that sees both sides — which is also why `main` is three lines: the wiring it
+drives lives in `newCLI`, and the test drives the same function instead of a
+lookalike that could drift from it.
+
+`make smoke` adds the check no suite can make: it starts the **runtime image**,
+runs the demo and diffs the output against the expected lines (`SMOKE_EXPECTED` in
+the Makefile). That is the packaging level — a renamed distribution, a moved
+entrypoint or a missing file in the image shows up here and nowhere else. It is
+deliberately *not* part of `make check`, which stays a source-level gate: run
+`smoke` whenever you touched the Dockerfile, the build files or the entrypoint.
 
 ## How the folders map to HexSlice
 

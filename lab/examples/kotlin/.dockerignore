@@ -1,0 +1,9 @@
+# Build outputs and local tool caches never enter the image: the build stages
+# start from source plus a warmed Gradle cache, not from a developer's tree.
+**/build/
+**/.gradle/
+bin/
+.git/
+.gitignore
+.dockerignore
+README.md

@@ -1,0 +1,125 @@
+# a-check configuration — hexagonal + vertical-slice (HexSlice) architecture gate.
+# https://github.com/pt9912/a-check   (pinned to v0.20.0 — see the Makefile)
+#
+# Strictly decoded: unknown keys cause exit code 2.
+#
+# The same gate as the Go example, in another language and in a Gradle
+# multi-module build. Two differences come from Kotlin, not from the architecture:
+#
+#   * The `resolution` block. Kotlin imports are fully qualified dotted names, and
+#     a-check maps them onto paths by stripping `package_base` and turning the dots
+#     into slashes. With the sources under `<module>/src/main/kotlin`, one
+#     `package_base` and several `roots` are needed — the multi-module recipe from
+#     the handbook. See the block at the bottom.
+#   * The `languages` globs are scoped to the module trees; `src/test` is not part
+#     of the production dependency graph and is excluded below.
+#
+# The layer globs keep clean literal prefixes on purpose (handbook §3.7, ADR-0028):
+# a wildcard-in-the-middle (.../**/createorder/**) or file-extension glob carries
+# no prefix and would leave lateral-slice, port-locality and even the edge check
+# silently inert. Each port layer's glob ends on the direction that layer
+# declares; a-check v0.20.0 strips that segment when deriving the port scope
+# (ADR-0040), so port-locality keeps working.
+#
+# What this config does *not* have to enforce is the coarse layer boundary: the
+# Gradle modules already do that, because the hexagon modules have no adapters on
+# their classpath (see the modules' build.gradle.kts files). a-check checks what a
+# compiler cannot see — the per-slice and per-port boundaries inside the
+# application module.
+version: 1
+
+languages:
+  kotlin:
+    - "hexagon/**/*.kt"
+    - "adapters/**/*.kt"
+    - "composition/**/*.kt"
+
+layers:
+  domain:
+    globs: ["hexagon/domain/src/main/kotlin/**"]
+    role: domain
+  ports_inbound:
+    globs:
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/createorder/ports/inbound/**"
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/cancelorder/ports/inbound/**"
+    role: port
+    direction: inbound      # offered by the core; a driving adapter calls it
+  ports_outbound:
+    globs:
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/createorder/ports/outbound/**"
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/cancelorder/ports/outbound/**"
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/ports/outbound/**"
+    role: port
+    direction: outbound     # needed by the core; a driven adapter implements it
+  app:
+    globs:
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/createorder/**"   # slice: create order
+      - "hexagon/application/src/main/kotlin/hexslice/hexagon/application/order/cancelorder/**"   # slice: cancel order
+    role: app
+  driving_adapters:
+    globs: ["adapters/driving/**"]    # one module per adapter; the whole subtree is this layer
+    role: adapter
+    direction: driving      # calls the application core
+  driven_adapters:
+    globs: ["adapters/driven/**"]     # one module per adapter; the whole subtree is this layer
+    role: adapter
+    direction: driven       # is called by the application core
+
+# Allowed directed dependencies (inward only). Any cross-layer import without a
+# matching edge is reported as `wrong-direction`.
+edges:
+  - {from: app,              to: domain}
+  - {from: app,              to: ports_inbound}    # the slice implements its own inbound port
+  - {from: app,              to: ports_outbound}   # the slice uses its own outbound ports
+  - {from: ports_outbound,   to: domain}
+  - {from: driving_adapters, to: ports_inbound}    # the CLI speaks the inbound ports
+  - {from: driven_adapters,  to: ports_outbound}   # Kotlin is nominal: the adapter names its port
+  - {from: driven_adapters,  to: domain}           # adapters map to/from domain objects
+# Notes on what is deliberately absent:
+# * `ports_inbound -> domain` is absent because no inbound port imports the domain
+#   — the contract is expressed in plain types and keeps both sides out.
+# * `driving_adapters -> app` is absent because the driving adapter reaches the
+#   use cases exclusively through their inbound ports. Add the edge in the same
+#   commit as a driving adapter that imports a slice directly.
+#
+# The one edge the Go example does *not* need is `driven_adapters ->
+# ports_outbound`: Go satisfies its interfaces structurally, Kotlin's type system
+# makes the adapter name the port it implements. Same architecture, one edge
+# apart — the languages' difference, not the layering's.
+#
+# `port-direction-mismatch` is live: `driving -> inbound` is the pair, and a
+# driven adapter importing an inbound port is a finding (categorical, not liftable
+# by an allow edge).
+
+# The composition root wires adapters to slices and is exempt from layer rules.
+composition_root: ["composition/src/main/kotlin/**"]
+
+# Outside the `languages` globs — stated so the exclusion is a decision rather than
+# an accident. The Gradle build scripts (*.gradle.kts) are never matched by the
+# `*.kt` globs: the suffix is one character longer.
+exclude:
+  - "**/src/test/**"
+
+# `package_base` plus one root per module, each rooted at the directory that
+# mirrors it: a-check strips the base, turns the dots into slashes, and keeps the
+# candidate that is backed by a real scanned file. The mapping lands exactly on the
+# repo-relative path (hexslice.hexagon.domain.order.Order ->
+# hexagon/domain/src/main/kotlin/hexslice/hexagon/domain/order/Order).
+#
+# Without `package_base` a-check would keep the FQN dotted, it would match no layer
+# glob, the import would count as repo-external and NO rule would judge it — the
+# gate would still print `0 Befund(e)`, for a clean tree and for a broken one
+# alike. The tell is on stderr: a-check's boundary advisory names the imports that
+# resolve to no layer. Read that advisory, not just the summary.
+resolution:
+  kotlin:
+    mode: fixed-root
+    package_base: "hexslice"
+    roots:
+      - "hexagon/domain/src/main/kotlin/hexslice"
+      - "hexagon/application/src/main/kotlin/hexslice"
+      - "adapters/driving/cli/order/src/main/kotlin/hexslice"
+      - "adapters/driven/memory/order/src/main/kotlin/hexslice"
+      - "adapters/driven/id/src/main/kotlin/hexslice"
+      - "adapters/driven/notify/src/main/kotlin/hexslice"
+      - "composition/src/main/kotlin/hexslice"

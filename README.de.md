@@ -42,3 +42,5 @@ Lauffähige, sprachspezifische Beispiele liegen unter [`lab/`](lab/README.md):
 
 * [Go](lab/examples/go/) — Business-Area `order` mit den Slices *create order*
   und *cancel order*, einem CLI-Driving-Adapter sowie `make`- und Docker-Tooling.
+* [Kotlin](lab/examples/kotlin/) — dasselbe Beispiel in Kotlin (Gradle + JDK 25,
+  nur Docker), via a-check über die JVM-Import-Auflösung gegatet.
